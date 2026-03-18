@@ -1,0 +1,68 @@
+version: "3.9"
+services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: marketing-service:local
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-production}
+      APP_DEBUG: ${APP_DEBUG:-false}
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_DATABASE: ${DB_DATABASE:-marketing}
+      DB_USERNAME: ${DB_USERNAME:-marketing}
+      DB_PASSWORD: ${DB_PASSWORD:-marketing}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-v"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - marketing-net
+
+  web:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "8080:80"
+    volumes:
+      - ./:/var/www/html:ro
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    networks:
+      - marketing-net
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-marketing}
+      MYSQL_USER: ${DB_USERNAME:-marketing}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-marketing}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-root}
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u${DB_USERNAME:-marketing}", "-p${DB_PASSWORD:-marketing}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - marketing-net
+
+volumes:
+  db-data:
+
+networks:
+  marketing-net:

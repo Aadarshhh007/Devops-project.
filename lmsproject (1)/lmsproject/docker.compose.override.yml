@@ -1,0 +1,12 @@
+services:
+  app:
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+    volumes:
+      - ./:/var/www/html
+    command: ["sh", "-c", "php artisan migrate --force || true && php-fpm -F"]
+
+  web:
+    ports:
+      - "8000:80"
